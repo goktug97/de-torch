@@ -56,7 +56,7 @@ def make_env(id):
 @config('environment')
 class EnvironmentConfig():
     make_env = make_env
-    id: str = 'LunarLander-v2'
+    id: str = 'MountainCar-v0'
 
 
 @config('policy')
@@ -72,17 +72,16 @@ class PolicyConfig():
         output_func: Callable[[int], int] = lambda x: x.detach().numpy()
     hidden_layers: List[int] = field(default_factory=lambda: [])
     # hidden_act: Optional[nn.Module] = nn.ReLU
-    hidden_act: Optional[nn.Module] = nn.Tanh
     bias: bool = True
 
 
 @config('de')
 class DEConfig():
-    n_rollout = 2
-    n_step = 200
-    population_size = 256
+    n_rollout = 5
+    n_step = 50
+    population_size = 512
     strategy = Strategy.best1bin
-    seed = 123123
+    seed = 123
 
 
 if __name__ == '__main__':
@@ -97,6 +96,9 @@ if __name__ == '__main__':
         print(f'Generation: {self.gen} Best Reward: {self.rewards[self.current_best]}')
 
     de.train()
+
+    reward = de.eval_policy(de.population[de.current_best])
+    print(f'Reward: {reward}')
 
     # Evaluate and render the best policy.
     from mpi4py import MPI
