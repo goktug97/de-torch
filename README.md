@@ -37,3 +37,7 @@ or in parallel for faster training.
 ```bash
 mpirun -np 2 python example.py
 ```
+
+# Another Evolution Library for PyTorch
+
+https://github.com/goktug97/nes-torch
