@@ -44,16 +44,18 @@ class DE():
 
         self.env = self.make_env(**config.environment.to_dict())
 
-        if config.de.seed is not None:
-            torch.manual_seed(config.de.seed)
-            np.random.seed(config.de.seed)
-            random.seed(config.de.seed)
-            torch.cuda.manual_seed(config.de.seed)
-            torch.cuda.manual_seed_all(config.de.seed)
-            torch.backends.cudnn.benchmark = False
-            torch.backends.cudnn.deterministic = True
-            self.env.seed(config.de.seed)
-            self.env.action_space.seed(config.de.seed)
+        torch.manual_seed(config.de.seed)
+        torch.cuda.manual_seed(config.de.seed)
+        torch.cuda.manual_seed_all(config.de.seed)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+
+        np.random.seed(config.de.seed)
+        random.seed(config.de.seed)
+        self.env.seed(config.de.seed)
+        self.env.action_space.seed(config.de.seed)
+
+        self.rng = np.random.default_rng(config.de.seed)
 
         self.gen = 0
 
@@ -62,8 +64,6 @@ class DE():
             policy = self.make_policy(**config.policy.to_dict())
             self.population.append(policy)
         self.population = np.array(self.population)
-        self.rewards = self.eval_population(self.population)
-        self.current_best = np.argmax(self.rewards)
 
     @staticmethod
     def make_env(make_env, **kwargs):
@@ -88,9 +88,9 @@ class DE():
     def sample(self):
         """Sample 3 policies from the population based on the strategy."""
         if self.config.de.strategy == Strategy.rand1bin:
-            return self.population[np.random.randint(0, self.config.de.population_size, 3)]
+            return self.population[self.rng.integers(0, self.config.de.population_size, 3)]
         elif self.config.de.strategy == Strategy.best1bin:
-            return self.population[[self.current_best, *np.random.randint(0, self.config.de.population_size, 2)]]
+            return self.population[[self.current_best, *self.rng.integers(0, self.config.de.population_size, 2)]]
         else:
             raise NotImplementedError
 
@@ -140,6 +140,9 @@ class DE():
         if not rank == 0:
             f = open(os.devnull, 'w')
             sys.stdout = f
+
+        self.rewards = self.eval_population(self.population)
+        self.current_best = np.argmax(self.rewards)
 
         for self.gen in range(self.config.de.n_step):
             population = self.generate_candidates()

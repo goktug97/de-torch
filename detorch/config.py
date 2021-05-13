@@ -44,4 +44,4 @@ class DEConfig():
     differential_weight: float = 0.02
     crossover_probability: float = 0.05
     strategy: Choices[Strategy] = Choices(list(Strategy), default=Strategy.rand1bin)
-    seed: Optional[int] = None
+    seed: Required[int] = 123
