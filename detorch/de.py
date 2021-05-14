@@ -35,7 +35,8 @@ class Policy(nn.Module, ABC):
 class DE():
     """
     :ivar int gen: Current generation
-    :ivar Policy policy: Trained policy
+    :ivar List[Policy] population
+    :ivar gym.Env Gym environment
     """
     @hook
     def __init__(self, config: Config):
