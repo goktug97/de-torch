@@ -17,6 +17,10 @@ from .utils import *
 class Strategy(IntEnum):
     rand1bin = 0
     best1bin = 1
+    rand2bin = 2
+    best2bin = 3
+    currenttobest1bin = 4
+    randtobest1bin = 5
 
 
 class Policy(nn.Module, ABC):
@@ -45,16 +49,17 @@ class DE():
 
         self.env = self.make_env(**config.environment.to_dict())
 
+        np.random.seed(config.de.seed)
+        random.seed(config.de.seed)
         torch.manual_seed(config.de.seed)
         torch.cuda.manual_seed(config.de.seed)
         torch.cuda.manual_seed_all(config.de.seed)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
-
-        np.random.seed(config.de.seed)
-        random.seed(config.de.seed)
         self.env.seed(config.de.seed)
         self.env.action_space.seed(config.de.seed)
+
+        self.differential_weight = self.config.de.differential_weight
 
         self.rng = np.random.default_rng(config.de.seed)
 
@@ -85,34 +90,53 @@ class DE():
             total_reward += policy.rollout(self.env)
         return total_reward / self.config.de.n_rollout
 
-    @hook
-    def sample(self):
-        """Sample 3 policies from the population based on the strategy."""
-        if self.config.de.strategy == Strategy.rand1bin:
-            return self.population[self.rng.integers(0, self.config.de.population_size, 3)]
-        elif self.config.de.strategy == Strategy.best1bin:
-            return self.population[[self.current_best, *self.rng.integers(0, self.config.de.population_size, 2)]]
-        else:
-            raise NotImplementedError
+    def sample_parameters(self, size):
+        samples = self.population[self.rng.integers(0, len(self.population), size)]
+        params = [torch.nn.utils.parameters_to_vector(sample.parameters()) for sample in samples]
+        return params
 
     @hook
     def mutate(self, policy):
         """Mutate the given policy."""
-        random_ps = self.sample()
+        policy_params = torch.nn.utils.parameters_to_vector(policy.parameters())
+        best_params = torch.nn.utils.parameters_to_vector(self.population[self.current_best].parameters())
+        if self.config.de.strategy == Strategy.rand1bin:
+            params = self.sample_parameters(3)
+            diff = params[1] - params[2]
+            p0 = params[0]
+        elif self.config.de.strategy == Strategy.best1bin:
+            params = self.sample_parameters(2)
+            diff = params[0] - params[1]
+            p0 = best_params
+        elif self.config.de.strategy == Strategy.rand2bin:
+            params = self.sample_parameters(5)
+            diff = params[1] - params[2] + params[3] - params[4]
+            p0 = params[0]
+        elif self.config.de.strategy == Strategy.best2bin:
+            params = self.sample_parameters(4)
+            diff = params[0] - params[1] + params[2] - params[3]
+            p0 = best_params
+        elif self.config.de.strategy == Strategy.randtobest1bin:
+            params = self.sample_parameters(3)
+            diff = best_params - params[0] + params[1] - params[2]
+            p0 = params[0]
+        elif self.config.de.strategy == Strategy.currenttobest1bin:
+            params = self.sample_parameters(2)
+            diff = best_params - policy_params + params[0] - params[1]
+            p0 = policy_params
+        else:
+            raise NotImplementedError
 
-        for parameter, p1_parameter, p2_parameter, p3_parameter in zip(
-                policy.parameters(), *[p.parameters() for p in random_ps]):
-            diff = (p2_parameter.data - p3_parameter.data)
-            mutation = p1_parameter.data + self.config.de.differential_weight * diff
-            noncross = torch.rand(parameter.shape) >= self.config.de.crossover_probability
-            mutation[noncross] = parameter.data[noncross]
-            parameter.data.copy_(mutation.data)
+        mutation = p0 + self.differential_weight * diff
+        cross = torch.rand(policy_params.shape) <= self.config.de.crossover_probability
+        policy_params[cross] = mutation[cross]
+        torch.nn.utils.vector_to_parameters(policy_params, policy.parameters())
 
     @hook
     def eval_population(self, population):
         comm = MPI.COMM_WORLD
         rewards = []
-        reward_array = np.zeros(self.config.de.population_size, dtype=np.float32)
+        reward_array = np.zeros(len(self.population), dtype=np.float32)
         batch = np.array_split(population, comm.Get_size())[comm.Get_rank()]
         for policy in batch:
             rewards.append(self.eval_policy(policy))
@@ -145,10 +169,13 @@ class DE():
         self.rewards = self.eval_population(self.population)
         self.current_best = np.argmax(self.rewards)
 
-        for self.gen in range(self.config.de.n_step):
+        while self.gen < self.config.de.n_step:
+            if isinstance(self.config.de.differential_weight, tuple):
+                self.differential_weight = self.rng.uniform(*self.config.de.differential_weight)
             population = self.generate_candidates()
             rewards = self.eval_population(population)
             self.selection(population, rewards)
+            self.gen += 1
 
         sys.stdout = sys.__stdout__
         torch.set_grad_enabled(True)
