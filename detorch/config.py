@@ -1,4 +1,4 @@
-from typing import Optional, Type, Callable, Any, Union
+from typing import Optional, Type, Callable, Any, Union, Tuple
 
 import torch
 from pipcs import Config, Required, required, Choices
@@ -34,7 +34,7 @@ class DEConfig():
     :ivar int population_size
     :ivar int n_step: Number of training steps
     :ivar int n_rollout: Number of episodes per sampled policy.
-    :ivar Union[tuple[float, float], float] differential_weight: The mutation constant.
+    :ivar Union[Tuple[float, float], float] differential_weight: The mutation constant.
     :ivar float crossover_probability
     :ivar Strategy strategy: Recombination strategy
     :ivar Optional[int] seed: Random seed
@@ -42,7 +42,7 @@ class DEConfig():
     n_step: Required[int] = required
     n_rollout: int = 1
     population_size: int = 32
-    differential_weight: Union[tuple[float, float], float] = 0.02
+    differential_weight: Union[Tuple[float, float], float] = 0.02
     crossover_probability: float = 0.05
     strategy: Choices[Strategy] = Choices(list(Strategy), default=Strategy.best1bin)
     seed: Required[int] = 123
