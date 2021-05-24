@@ -43,6 +43,6 @@ class DEConfig():
     n_rollout: int = 1
     population_size: int = 32
     differential_weight: Union[Tuple[float, float], float] = 0.02
-    crossover_probability: float = 0.05
+    crossover_probability: float = None
     strategy: Choices[Strategy] = Choices(list(Strategy), default=Strategy.best1bin)
     seed: Required[int] = 123

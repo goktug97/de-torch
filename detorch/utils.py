@@ -1,3 +1,4 @@
+import math
 from functools import wraps
 
 
@@ -24,3 +25,7 @@ def hook(func):
         return ret
 
     return wrapped
+
+
+def calculate_cr(size):
+    return math.pow(math.e, -0.5) / (math.log(size) * math.sqrt(2 * math.pi))

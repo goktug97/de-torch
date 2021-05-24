@@ -23,7 +23,7 @@ pip install detorch --user
 ```
 
 # Usage
-See https://github.com/goktug97/de-torch/blob/master/example.py
+See https://github.com/goktug97/de-torch/blob/master/examples
 
 Check https://github.com/goktug97/pipcs to understand the configuration system.
 

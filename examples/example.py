@@ -56,7 +56,7 @@ def make_env(id):
 @config('environment')
 class EnvironmentConfig():
     make_env = make_env
-    id: str = 'MountainCar-v0'
+    id: str = 'LunarLander-v2'
 
 
 @config('policy')
@@ -78,17 +78,15 @@ class PolicyConfig():
 @config('de')
 class DEConfig():
     n_rollout = 5
-    n_step = 50
-    population_size = 512
+    n_step = 100
+    population_size = 256
+    differential_weight = (0.7, 1.0)
+    crossover_probability = None
     strategy = Strategy.best1bin
-    seed = 123
+    seed = 123123
 
 
 if __name__ == '__main__':
-    @DE.__init__.add_hook()
-    def init(self, *args, **kwargs):
-        self.best_reward = -np.inf
-
     de = DE(config)
 
     @de.selection.add_hook()
@@ -96,9 +94,6 @@ if __name__ == '__main__':
         print(f'Generation: {self.gen} Best Reward: {self.rewards[self.current_best]}')
 
     de.train()
-
-    reward = de.eval_policy(de.population[de.current_best])
-    print(f'Reward: {reward}')
 
     # Evaluate and render the best policy.
     from mpi4py import MPI

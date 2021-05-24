@@ -61,6 +61,13 @@ class DE():
 
         self.differential_weight = self.config.de.differential_weight
 
+        if self.config.de.crossover_probability is None:
+            policy = self.make_policy(**config.policy.to_dict())
+            size = len(torch.nn.utils.parameters_to_vector(policy.parameters()))
+            self.crossover_probability = calculate_cr(size)
+        else:
+            self.crossover_probability = self.config.de.crossover_probability
+
         self.rng = np.random.default_rng(config.de.seed)
 
         self.gen = 0
@@ -128,7 +135,7 @@ class DE():
             raise NotImplementedError
 
         mutation = p0 + self.differential_weight * diff
-        cross = torch.rand(policy_params.shape) <= self.config.de.crossover_probability
+        cross = torch.rand(policy_params.shape) <= self.crossover_probability
         policy_params[cross] = mutation[cross]
         torch.nn.utils.vector_to_parameters(policy_params, policy.parameters())
 
