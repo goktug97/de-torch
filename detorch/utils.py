@@ -28,4 +28,4 @@ def hook(func):
 
 
 def calculate_cr(size):
-    return math.pow(math.e, -0.5) / (math.log(size) * math.sqrt(2 * math.pi))
+    return math.exp(-0.5) / (math.log(size) * math.sqrt(2 * math.pi) + math.exp(-0.5))
