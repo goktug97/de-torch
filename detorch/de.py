@@ -21,6 +21,8 @@ class Strategy(IntEnum):
     best2bin = 3
     currenttobest1bin = 4
     randtobest1bin = 5
+    scaledbest1bin = 6
+    scaledrand1bin = 7
 
 
 class Policy(nn.Module, ABC):
@@ -98,9 +100,10 @@ class DE():
         return total_reward / self.config.de.n_rollout
 
     def sample_parameters(self, size):
-        samples = self.population[self.rng.integers(0, len(self.population), size)]
+        idxs = self.rng.integers(0, len(self.population), size)
+        samples = self.population[idxs]
         params = [torch.nn.utils.parameters_to_vector(sample.parameters()) for sample in samples]
-        return params
+        return params, idxs
 
     @hook
     def mutate(self, policy):
@@ -108,29 +111,41 @@ class DE():
         policy_params = torch.nn.utils.parameters_to_vector(policy.parameters())
         best_params = torch.nn.utils.parameters_to_vector(self.population[self.current_best].parameters())
         if self.config.de.strategy == Strategy.rand1bin:
-            params = self.sample_parameters(3)
+            params, _ = self.sample_parameters(3)
             diff = params[1] - params[2]
             p0 = params[0]
         elif self.config.de.strategy == Strategy.best1bin:
-            params = self.sample_parameters(2)
+            params, _ = self.sample_parameters(2)
             diff = params[0] - params[1]
             p0 = best_params
         elif self.config.de.strategy == Strategy.rand2bin:
-            params = self.sample_parameters(5)
+            params, _ = self.sample_parameters(5)
             diff = params[1] - params[2] + params[3] - params[4]
             p0 = params[0]
         elif self.config.de.strategy == Strategy.best2bin:
-            params = self.sample_parameters(4)
+            params, _ = self.sample_parameters(4)
             diff = params[0] - params[1] + params[2] - params[3]
             p0 = best_params
         elif self.config.de.strategy == Strategy.randtobest1bin:
-            params = self.sample_parameters(3)
+            params, _ = self.sample_parameters(3)
             diff = best_params - params[0] + params[1] - params[2]
             p0 = params[0]
         elif self.config.de.strategy == Strategy.currenttobest1bin:
-            params = self.sample_parameters(2)
+            params, _ = self.sample_parameters(2)
             diff = best_params - policy_params + params[0] - params[1]
             p0 = policy_params
+        elif self.config.de.strategy == Strategy.scaledbest1bin:
+            params, idxs = self.sample_parameters(2)
+            rewards = rank_transformation(self.rewards)[idxs]
+            distances = torch.stack(params) - policy_params
+            diff = torch.from_numpy(rewards) @ distances
+            p0 = best_params
+        elif self.config.de.strategy == Strategy.scaledrand1bin:
+            params, idxs = self.sample_parameters(3)
+            rewards = rank_transformation(self.rewards)[idxs[1:]]
+            distances = torch.stack(params[1:]) - policy_params
+            diff = torch.from_numpy(rewards) @ distances
+            p0 = params[0]
         else:
             raise NotImplementedError
 
