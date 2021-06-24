@@ -23,6 +23,14 @@ class Strategy(IntEnum):
     randtobest1bin = 5
     scaledbest1bin = 6
     scaledrand1bin = 7
+    rand1soft = 8
+    best1soft = 9
+    rand2soft = 10
+    best2soft = 11
+    currenttobest1soft = 12
+    randtobest1soft = 13
+    scaledbest1soft = 14
+    scaledrand1soft = 15
 
 
 class Policy(nn.Module, ABC):
@@ -110,37 +118,37 @@ class DE():
         """Mutate the given policy."""
         policy_params = torch.nn.utils.parameters_to_vector(policy.parameters())
         best_params = torch.nn.utils.parameters_to_vector(self.population[self.current_best].parameters())
-        if self.config.de.strategy == Strategy.rand1bin:
+        if self.config.de.strategy % 8 == Strategy.rand1bin:
             params, _ = self.sample_parameters(3)
             diff = params[1] - params[2]
             p0 = params[0]
-        elif self.config.de.strategy == Strategy.best1bin:
+        elif self.config.de.strategy % 8 == Strategy.best1bin:
             params, _ = self.sample_parameters(2)
             diff = params[0] - params[1]
             p0 = best_params
-        elif self.config.de.strategy == Strategy.rand2bin:
+        elif self.config.de.strategy % 8 == Strategy.rand2bin:
             params, _ = self.sample_parameters(5)
             diff = params[1] - params[2] + params[3] - params[4]
             p0 = params[0]
-        elif self.config.de.strategy == Strategy.best2bin:
+        elif self.config.de.strategy % 8 == Strategy.best2bin:
             params, _ = self.sample_parameters(4)
             diff = params[0] - params[1] + params[2] - params[3]
             p0 = best_params
-        elif self.config.de.strategy == Strategy.randtobest1bin:
+        elif self.config.de.strategy % 8 == Strategy.randtobest1bin:
             params, _ = self.sample_parameters(3)
             diff = best_params - params[0] + params[1] - params[2]
             p0 = params[0]
-        elif self.config.de.strategy == Strategy.currenttobest1bin:
+        elif self.config.de.strategy % 8 == Strategy.currenttobest1bin:
             params, _ = self.sample_parameters(2)
             diff = best_params - policy_params + params[0] - params[1]
             p0 = policy_params
-        elif self.config.de.strategy == Strategy.scaledbest1bin:
+        elif self.config.de.strategy % 8 == Strategy.scaledbest1bin:
             params, idxs = self.sample_parameters(2)
             rewards = rank_transformation(self.rewards)[idxs]
             distances = torch.stack(params) - policy_params
             diff = torch.from_numpy(rewards) @ distances
             p0 = best_params
-        elif self.config.de.strategy == Strategy.scaledrand1bin:
+        elif self.config.de.strategy % 8 == Strategy.scaledrand1bin:
             params, idxs = self.sample_parameters(3)
             rewards = rank_transformation(self.rewards)[idxs[1:]]
             distances = torch.stack(params[1:]) - policy_params
@@ -150,8 +158,13 @@ class DE():
             raise NotImplementedError
 
         mutation = p0 + self.differential_weight * diff
-        cross = torch.rand(policy_params.shape) <= self.crossover_probability
-        policy_params[cross] = mutation[cross]
+
+        if self.config.de.strategy <= 7:
+            cross = torch.rand(policy_params.shape) <= self.crossover_probability
+            policy_params[cross] = mutation[cross]
+        else:
+            policy_params = self.crossover_probability * policy_params + (1.0 - self.crossover_probability) * mutation
+
         torch.nn.utils.vector_to_parameters(policy_params, policy.parameters())
 
     @hook
