@@ -168,7 +168,7 @@ class DE():
         """Generate new candidates by mutating the population."""
         population = self.create_population()
         for idx, policy in enumerate(population):
-            policy.load_state_dict(population[idx].state_dict())
+            policy.load_state_dict(self.population[idx].state_dict())
             self.mutate(policy)
         return population
 
