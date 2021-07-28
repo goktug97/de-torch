@@ -10,79 +10,34 @@ import numpy as np
 
 from detorch import DE, Policy, default_config, hook, Strategy
 
-
-def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
-class Agent(Policy):
-    def __init__(self, input_size, hidden_layers, output_size, output_func,
-                 hidden_act = None, output_act=None, bias=True):
-        super().__init__()
-        layers: List[nn.Module] = []
-        layer_sizes = [input_size] + hidden_layers + [output_size]
-        for idx, (layer1, layer2) in enumerate(pairwise(layer_sizes)):
-            layers.append(nn.Linear(layer1, layer2, bias=bias))
-            if hidden_act is not None:
-                if idx < len(layer_sizes) - 2:
-                    layers.append(hidden_act())
-        if output_act is not None:
-            layers.append(output_act())
-        self.output_func = output_func
-        self.seq = nn.Sequential(*layers)
-
-    def rollout(self, env):
-        done = False
-        obs = env.reset()
-        total_reward = 0
-        while not done:
-            obs_tensor = torch.from_numpy(obs).float()
-            action = self.output_func(self.seq(obs_tensor))
-            obs, reward, done, _ = env.step(action)
-            total_reward += reward
-        return total_reward
+from .modules import Agent
 
 
 config = Config(default_config)
 
 
-def make_env(id):
-    return gym.make(id)
-
-
-@config('environment')
-class EnvironmentConfig():
-    make_env = make_env
-    id: str = 'LunarLander-v2'
-
-
 @config('policy')
 class PolicyConfig():
     policy = Agent
-    env = DE.make_env(**config.environment.to_dict())
-    input_size: int = env.observation_space.shape[0]
-    if isinstance(env.action_space, gym.spaces.Discrete):
-        output_size: int = env.action_space.n
-        output_func: Callable[[int], int] = lambda x: x.argmax().item()
-    else:
-        output_size: int = env.action_space.shape[0]
-        output_func: Callable[[int], int] = lambda x: x.detach().numpy()
+
+    # Below variables are user settings
+    # they are passed to Agent as kwargs
+    env_id: str = 'LunarLander-v2'
+    n_rollout: int = 5
     hidden_layers: List[int] = field(default_factory=lambda: [])
     # hidden_act: Optional[nn.Module] = nn.ReLU
+    # output_act: Optional[nn.Module] = nn.Tanh
     bias: bool = True
+    seed: int = config.de.seed
 
 
 @config('de')
 class DEConfig():
-    n_rollout = 5
-    n_step = 100
+    n_step = 2
     population_size = 256
-    differential_weight = (0.7, 1.0)
-    crossover_probability = None
-    strategy = Strategy.best1bin
+    differential_weight = 0.7
+    crossover_probability = 0.05
+    strategy = Strategy.scaledbest1bin
     seed = 123123
 
 
@@ -99,10 +54,11 @@ if __name__ == '__main__':
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
     if comm.Get_rank() == 0:
-        de.env = gym.wrappers.Monitor(de.env, './videos', force = True)
-        setattr(de, 'env.step', hook(de.env.step.__func__))
-        @de.env.step.add_hook(after=True)
+        best_policy = de.population[de.current_best]
+        best_policy.env = gym.wrappers.Monitor(best_policy.env, './videos', force = True)
+        setattr(best_policy, 'env.step', hook(best_policy.env.step.__func__))
+        @best_policy.env.step.add_hook(after=True)
         def render(self, *args, **kwargs):
             self.render()
-        reward = de.eval_policy(de.population[de.current_best])
+        reward = best_policy.evaluate()
         print(f'Reward: {reward}')

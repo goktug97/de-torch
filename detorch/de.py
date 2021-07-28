@@ -39,10 +39,9 @@ class Policy(nn.Module, ABC):
         super().__init__()
 
     @abstractmethod
-    def rollout(self, env):
-        """This function should be implemented by the user and
-        it should evaluate the model in the given environment and
-        return the total reward."""
+    def evaluate(self):
+        """This function should be implemented by the user and it
+        should evaluate the model and return reward or negative loss."""
         pass
 
 
@@ -50,14 +49,11 @@ class DE():
     """
     :ivar int gen: Current generation
     :ivar List[Policy] population
-    :ivar gym.Env Gym environment
     """
     @hook
     def __init__(self, config: Config):
         config.check_config()
         self.config = config
-
-        self.env = self.make_env(**config.environment.to_dict())
 
         np.random.seed(config.de.seed)
         random.seed(config.de.seed)
@@ -66,8 +62,6 @@ class DE():
         torch.cuda.manual_seed_all(config.de.seed)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
-        self.env.seed(config.de.seed)
-        self.env.action_space.seed(config.de.seed)
 
         self.differential_weight = self.config.de.differential_weight
 
@@ -87,25 +81,13 @@ class DE():
             policy = self.make_policy(**config.policy.to_dict())
             self.population.append(policy)
         self.population = np.array(self.population)
-
-    @staticmethod
-    def make_env(make_env, **kwargs):
-        """Helper function to create a gym environment."""
-        return make_env(**kwargs)
+        self.rewards = None
 
     @staticmethod
     def make_policy(policy, **kwargs):
         """Helper function to create a policy."""
         assert issubclass(policy, Policy)
         return policy(**kwargs)
-
-    @hook
-    def eval_policy(self, policy):
-        """Evaluate policy on the ``self.env`` for ``self.config.de.n_rollout times``"""
-        total_reward = 0
-        for _ in range(self.config.de.n_rollout):
-            total_reward += policy.rollout(self.env)
-        return total_reward / self.config.de.n_rollout
 
     def sample_parameters(self, size):
         idxs = self.rng.integers(0, len(self.population), size)
@@ -174,7 +156,7 @@ class DE():
         reward_array = np.zeros(len(self.population), dtype=np.float32)
         batch = np.array_split(population, comm.Get_size())[comm.Get_rank()]
         for policy in batch:
-            rewards.append(self.eval_policy(policy))
+            rewards.append(policy.evaluate())
         comm.Allgatherv([np.array(rewards, dtype=np.float32), MPI.FLOAT], [reward_array, MPI.FLOAT])
         return reward_array
 
@@ -194,6 +176,18 @@ class DE():
         self.rewards[comp] = rewards[comp]
         self.current_best = np.argmax(self.rewards)
 
+    @hook
+    def step(self):
+        if self.rewards is None:
+            self.rewards = self.eval_population(self.population)
+            self.current_best = np.argmax(self.rewards)
+        if isinstance(self.config.de.differential_weight, tuple):
+            self.differential_weight = self.rng.uniform(*self.config.de.differential_weight)
+        population = self.generate_candidates()
+        rewards = self.eval_population(population)
+        self.selection(population, rewards)
+        self.gen += 1
+
     def train(self):
         torch.set_grad_enabled(False)
         rank = MPI.COMM_WORLD.Get_rank()
@@ -201,16 +195,8 @@ class DE():
             f = open(os.devnull, 'w')
             sys.stdout = f
 
-        self.rewards = self.eval_population(self.population)
-        self.current_best = np.argmax(self.rewards)
-
         while self.gen < self.config.de.n_step:
-            if isinstance(self.config.de.differential_weight, tuple):
-                self.differential_weight = self.rng.uniform(*self.config.de.differential_weight)
-            population = self.generate_candidates()
-            rewards = self.eval_population(population)
-            self.selection(population, rewards)
-            self.gen += 1
+            self.step()
 
         sys.stdout = sys.__stdout__
         torch.set_grad_enabled(True)
