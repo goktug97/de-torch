@@ -1,7 +1,6 @@
 import os
 import sys
 import random
-import copy
 from abc import ABC, abstractmethod
 from enum import IntEnum
 
@@ -76,12 +75,16 @@ class DE():
 
         self.gen = 0
 
-        self.population = []
-        for _ in range(config.de.population_size):
-            policy = self.make_policy(**config.policy.to_dict())
-            self.population.append(policy)
-        self.population = np.array(self.population)
+        self.population = self.create_population()
+
         self.rewards = None
+
+    def create_population(self):
+        population = []
+        for _ in range(self.config.de.population_size):
+            policy = self.make_policy(**self.config.policy.to_dict())
+            population.append(policy)
+        return np.array(population)
 
     @staticmethod
     def make_policy(policy, **kwargs):
@@ -163,7 +166,7 @@ class DE():
     @hook
     def generate_candidates(self):
         """Generate new candidates by mutating the population."""
-        population = copy.deepcopy(self.population)
+        population = self.create_population()
         for policy in population:
             self.mutate(policy)
         return population
