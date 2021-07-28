@@ -33,7 +33,7 @@ class PolicyConfig():
 
 @config('de')
 class DEConfig():
-    n_step = 2
+    n_step = 200
     population_size = 256
     differential_weight = 0.7
     crossover_probability = 0.05
