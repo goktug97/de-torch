@@ -12,12 +12,11 @@ config = Config(default_config)
 class Ackley(Policy):
     def __init__(self):
         super().__init__()
-        self.x = nn.Parameter(torch.rand(1), requires_grad=False)
-        self.y = nn.Parameter(torch.rand(1), requires_grad=False)
+        self.params = nn.Parameter(torch.rand(2), requires_grad=False)
 
     def evaluate(self):
-        x = self.x
-        y = self.y
+        x = self.params[0]
+        y = self.params[1]
         first_term = -20 * torch.exp(-0.2*torch.sqrt(0.5*(x**2+y**2)))
         second_term = -torch.exp(0.5*(torch.cos(2*np.pi*x)+np.cos(2*np.pi*y)))+np.e + 20
         return -(second_term + first_term).item()
