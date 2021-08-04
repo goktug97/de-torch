@@ -35,4 +35,5 @@ class DEConfig():
     beta: float = 0.0
     crossover_probability: float = None
     strategy: Choices[Strategy] = Choices(list(Strategy), default=Strategy.best1bin)
+    max_age: Optional[int] = None
     seed: int = 123

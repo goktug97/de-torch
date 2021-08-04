@@ -8,7 +8,7 @@ with open(os.path.join(directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='detorch',
-      version=f'1.0.3',
+      version=f'1.0.4',
       description='Minimal PyTorch Library for Differential Evolution',
       author='Göktuğ Karakaşlı',
       author_email='karakasligk@gmail.com',
