@@ -40,7 +40,6 @@ class Strategy(IntEnum):
 class Policy(nn.Module, ABC):
     """Abstract subclass of nn.Module."""
     def __init__(self):
-        self._age = 0
         super().__init__()
 
     @abstractmethod
@@ -196,11 +195,6 @@ class DE():
         population = self.generate_candidates()
         rewards = self.eval_population(population)
         self.selection(population, rewards)
-        if self.config.de.max_age is not None:
-            for idx, policy in enumerate(self.population):
-                policy._age += 1
-                if policy._age > self.config.de.max_age:
-                    self.population[idx] = self.make_policy(**self.config.policy.to_dict())
         self.gen += 1
 
     def train(self):
