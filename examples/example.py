@@ -10,7 +10,7 @@ import numpy as np
 
 from detorch import DE, Policy, default_config, hook, Strategy
 
-from .modules import Agent
+from modules import Agent
 
 
 config = Config(default_config)
