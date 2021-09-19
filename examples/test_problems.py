@@ -17,7 +17,7 @@ class Problem(Policy):
 
     def evaluate(self):
         self.params.clip_(self.f.min_bounds[0], self.f.max_bounds[0])
-        return -self.f(self.params).abs()
+        return -abs(self.f(self.params))
 
 
 config = Config(default_config)
