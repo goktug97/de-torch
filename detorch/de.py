@@ -7,8 +7,13 @@ from enum import IntEnum
 import torch
 from torch import nn
 import numpy as np
-from mpi4py import MPI
 from pipcs import Config
+
+try:
+    from mpi4py import MPI
+except ImportError:
+    from .MPI import MPI
+    MPI = MPI()
 
 from .utils import *
 

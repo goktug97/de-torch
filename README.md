@@ -7,7 +7,11 @@ Minimal PyTorch Library for Differential Evolution
 pipcs
 numpy
 torch
-mpi4py
+```
+
+## Optional
+```
+mpi4py # If you want to run in parallel
 gym # For examples
 ```
 
