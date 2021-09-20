@@ -31,7 +31,7 @@ See https://github.com/goktug97/de-torch/blob/master/examples
 
 Check https://github.com/goktug97/pipcs to understand the configuration system.
 
-Check https://github.com/goktug97/de-torch/blob/master/de/config.py for parameters.
+Check https://github.com/goktug97/de-torch/blob/master/detorch/config.py for parameters.
 
 You can run the example with
 ```bash
