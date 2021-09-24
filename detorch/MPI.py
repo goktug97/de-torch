@@ -22,3 +22,7 @@ class MPI():
     @staticmethod
     def Get_size():
         return 1
+
+    @staticmethod
+    def bcast(a, **kwargs):
+        return a

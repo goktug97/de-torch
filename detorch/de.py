@@ -10,6 +10,9 @@ import numpy as np
 from pipcs import Config
 
 try:
+    disable_mpi = os.environ.get('DETORCH_DISABLE_MPI')
+    if disable_mpi and disable_mpi != '0':
+        raise ImportError
     from mpi4py import MPI
 except ImportError:
     from .MPI import MPI
@@ -59,11 +62,18 @@ class DE():
         config.check_config()
         self.config = config
 
-        np.random.seed(config.de.seed)
-        random.seed(config.de.seed)
-        torch.manual_seed(config.de.seed)
-        torch.cuda.manual_seed(config.de.seed)
-        torch.cuda.manual_seed_all(config.de.seed)
+        if config.de.seed is not None:
+            seed = config.de.seed
+        else:
+            comm = MPI.COMM_WORLD
+            seed = random.randint(0, 1000)
+            seed = comm.bcast(seed, root=0)
+
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.benchmark = False
         torch.backends.cudnn.deterministic = True
 
@@ -76,9 +86,11 @@ class DE():
         else:
             self.crossover_probability = self.config.de.crossover_probability
 
-        self.rng = np.random.default_rng(config.de.seed)
+        self.rng = np.random.default_rng(seed)
 
         self.gen = 0
+
+        self._stop = False
 
         self.population = self.create_population()
 
@@ -161,7 +173,7 @@ class DE():
     def eval_population(self, population):
         comm = MPI.COMM_WORLD
         rewards = []
-        reward_array = np.zeros(len(self.population), dtype=np.float32)
+        reward_array = np.zeros(len(population), dtype=np.float32)
         batch = np.array_split(population, comm.Get_size())[comm.Get_rank()]
         for policy in batch:
             rewards.append(policy.evaluate())
@@ -197,6 +209,9 @@ class DE():
         self.selection(population, rewards)
         self.gen += 1
 
+    def stop(self):
+        self._stop = True
+
     def train(self):
         torch.set_grad_enabled(False)
         rank = MPI.COMM_WORLD.Get_rank()
@@ -204,7 +219,7 @@ class DE():
             f = open(os.devnull, 'w')
             sys.stdout = f
 
-        while self.gen < self.config.de.n_step:
+        while self.gen < self.config.de.n_step and not self._stop:
             self.step()
 
         sys.stdout = sys.__stdout__
