@@ -16,6 +16,16 @@ from modules import Agent
 config = Config(default_config)
 
 
+@config('de')
+class DEConfig():
+    n_step: int = 200
+    population_size: int = 256
+    differential_weight: float = 0.7
+    crossover_probability: float = 0.05
+    strategy: Strategy = Strategy.scaledbest1bin
+    seed: int = 123123
+
+
 @config('policy')
 class PolicyConfig():
     policy: Type[Policy] = Agent
@@ -29,16 +39,6 @@ class PolicyConfig():
     # output_act: Optional[nn.Module] = nn.Tanh
     bias: bool = True
     seed: int = config.de.seed
-
-
-@config('de')
-class DEConfig():
-    n_step: int = 200
-    population_size: int = 256
-    differential_weight: float = 0.7
-    crossover_probability: float = 0.05
-    strategy: Strategy = Strategy.scaledbest1bin
-    seed: int = 123123
 
 
 if __name__ == '__main__':
