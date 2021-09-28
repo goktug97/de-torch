@@ -1,14 +1,14 @@
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Type
 from dataclasses import field
 from itertools import tee
 
 import gym
-from pipcs import Config
 import torch
 from torch import nn
 import numpy as np
 
-from detorch import DE, Policy, default_config, hook, Strategy
+from detorch import DE, Policy, hook, Strategy
+from detorch.config import default_config, Config
 
 from modules import Agent
 
@@ -18,7 +18,7 @@ config = Config(default_config)
 
 @config('policy')
 class PolicyConfig():
-    policy = Agent
+    policy: Type[Policy] = Agent
 
     # Below variables are user settings
     # they are passed to Agent as kwargs
@@ -33,12 +33,12 @@ class PolicyConfig():
 
 @config('de')
 class DEConfig():
-    n_step = 200
-    population_size = 256
-    differential_weight = 0.7
-    crossover_probability = 0.05
-    strategy = Strategy.scaledbest1bin
-    seed = 123123
+    n_step: int = 200
+    population_size: int = 256
+    differential_weight: float = 0.7
+    crossover_probability: float = 0.05
+    strategy: Strategy = Strategy.scaledbest1bin
+    seed: int = 123123
 
 
 if __name__ == '__main__':

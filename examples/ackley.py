@@ -1,9 +1,10 @@
-from pipcs import Config
 import torch
 from torch import nn
+from typing import Type
 import numpy as np
 
-from detorch import DE, Policy, default_config, Strategy
+from detorch import DE, Policy, Strategy
+from detorch.config import default_config, Config
 
 
 config = Config(default_config)
@@ -24,17 +25,17 @@ class Ackley(Policy):
 
 @config('policy')
 class PolicyConfig():
-    policy = Ackley
+    policy: Type[Policy] = Ackley
 
 
 @config('de')
 class DEConfig():
-    n_step = 20
-    population_size = 256
-    differential_weight = 0.7
-    crossover_probability = 0.5
-    strategy = Strategy.scaledbest1soft
-    seed = 123123
+    n_step: int = 20
+    population_size: int = 256
+    differential_weight: float = 0.7
+    crossover_probability: float = 0.5
+    strategy: Strategy = Strategy.scaledbest1soft
+    seed: int = 123123
 
 
 if __name__ == '__main__':

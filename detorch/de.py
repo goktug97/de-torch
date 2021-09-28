@@ -7,7 +7,8 @@ from enum import IntEnum
 import torch
 from torch import nn
 import numpy as np
-from pipcs import Config
+from .dataclass_config import Config, check_required
+
 
 try:
     disable_mpi = os.environ.get('DETORCH_DISABLE_MPI')
@@ -59,11 +60,11 @@ class DE():
     """
     @hook
     def __init__(self, config: Config):
-        config.check_config()
-        self.config = config
+        check_required(config)
+        self.config = config.asdict()
 
-        if config.de.seed is not None:
-            seed = config.de.seed
+        if self.config.de.seed is not None:
+            seed = self.config.de.seed
         else:
             comm = MPI.COMM_WORLD
             seed = random.randint(0, 1000)
@@ -80,7 +81,7 @@ class DE():
         self.differential_weight = self.config.de.differential_weight
 
         if self.config.de.crossover_probability is None:
-            policy = self.make_policy(**config.policy.to_dict())
+            policy = self.make_policy(**config.policy)
             size = len(torch.nn.utils.parameters_to_vector(policy.parameters()))
             self.crossover_probability = calculate_cr(size)
         else:
@@ -99,7 +100,7 @@ class DE():
     def create_population(self):
         population = []
         for _ in range(self.config.de.population_size):
-            policy = self.make_policy(**self.config.policy.to_dict())
+            policy = self.make_policy(**self.config.policy)
             population.append(policy)
         return np.array(population)
 

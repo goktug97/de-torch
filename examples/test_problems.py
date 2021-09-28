@@ -1,10 +1,12 @@
-from pipcs import Config
+from typing import Type
+
 import torch
 from torch import nn
 import optproblems.cec2005 as op
 from optproblems.base import TestProblem
 
-from detorch import DE, Policy, default_config, Strategy
+from detorch import DE, Policy, Strategy
+from detorch.config import default_config, Config
 
 
 class Problem(Policy):
@@ -25,19 +27,19 @@ config = Config(default_config)
 
 @config('policy')
 class PolicyConfig():
-    policy = Problem
+    policy: Type[Policy] = Problem
     problem: TestProblem = op.F2
     dim: int = 1
 
 
 @config('de')
 class DEConfig():
-    n_step = 50
-    population_size = 256
-    differential_weight = 0.7
-    crossover_probability = 0.5
-    strategy = Strategy.scaledbest1soft
-    seed = 123123
+    n_step: int = 50
+    population_size: int = 256
+    differential_weight: float = 0.7
+    crossover_probability: float = 0.5
+    strategy: Strategy = Strategy.scaledbest1soft
+    seed: int = 123123
 
 
 if __name__ == '__main__':
