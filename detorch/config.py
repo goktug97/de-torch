@@ -34,5 +34,5 @@ class DEConfig():
     differential_weight: Union[Tuple[float, float], float] = 0.02
     beta: float = 0.0
     crossover_probability: float = None
-    strategy: Choice[Strategy] = Choice(list(Strategy), default=Strategy.best1bin)
+    strategy: Strategy = Strategy.best1bin
     seed: int = 123
